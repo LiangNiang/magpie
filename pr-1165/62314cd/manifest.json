@@ -1,0 +1,49 @@
+{
+  "summary": "diff 在供应商编辑器里为「本机」类预置（Ollama、LM Studio、oMLX）加了「地址」输入框：可改端口或填另一台电脑的地址，终结点预览随输入变化，非法地址会报错并聚焦该字段；LM Studio / oMLX 的预设说明也改成「local server, port 1234/8000 by default」。",
+  "scenes": [
+    {
+      "title": "新增本地预置并填地址",
+      "shots": [
+        {
+          "file": "01-local-preset-address-field.png",
+          "caption": "新增的本地预置编辑器：密钥上方多出的地址栏，此时为空",
+          "width": 1296
+        },
+        {
+          "file": "02-local-preset-endpoints.png",
+          "caption": "地址填好后编辑器的终结点预览",
+          "width": 1296
+        },
+        {
+          "file": "03-providers-after-local-add.png",
+          "caption": "添加之后的供应商列表",
+          "width": 2496
+        }
+      ]
+    },
+    {
+      "title": "编辑已保存的本地供应商地址",
+      "shots": [
+        {
+          "file": "04-saved-local-address.png",
+          "caption": "已保存的本地预置：地址栏里是它当前的地址",
+          "width": 1296
+        },
+        {
+          "file": "05-local-address-refused.png",
+          "caption": "填了不是地址的值后点「保存」的编辑器",
+          "width": 1296
+        }
+      ]
+    }
+  ],
+  "video": "preview.mp4",
+  "poster": "poster.png",
+  "errors": [],
+  "leak": false,
+  "skipped": null,
+  "mismatch": "",
+  "unseen": "沙盒里没有真正跑在别的端口或另一台电脑上的 Ollama / LM Studio / oMLX，所以只能看到地址进入编辑器、终结点预览与保存下来的 URL，看不到真的连通；沙盒原本没有本地预置，编辑态只能在本次录制新添加的那个供应商上演示；「URL 写在别处（导入或 CLI 设过）、保存时地址没变则不发 address」这种供应商也没有现成的可看；TUI 的询问地址与 w、CLI 的 address= 都不在界面里。",
+  "interactive": true,
+  "pages": 1
+}
