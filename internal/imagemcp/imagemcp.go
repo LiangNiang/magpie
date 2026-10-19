@@ -1,7 +1,8 @@
 // Package imagemcp is `magpie mcp image`: a stdio MCP server an agent is
 // given, when it is picked for it in the Library, to make images with the
-// model the Settings' Image generation names, and videos with the first
-// video model the gateway has (gateway.AutoVideomaker). It asks the
+// model the Settings' Image generation names, and videos with the one its
+// Video generation names, else the first video model the gateway has
+// (gateway.AutoVideomaker). It asks the
 // gateway, which knows the providers, and saves what comes back in the
 // project.
 package imagemcp

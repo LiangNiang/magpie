@@ -552,6 +552,75 @@ func TestVideoFollowsImageGenOff(t *testing.T) {
 	}
 }
 
+// A video model picked in Settings › Images › Video generation (#2896) is
+// what a request that names no model is made with, even with image
+// generation off; "off" turns such a request away; one picked that magpie
+// can't find any more gives way to the automatic one, and is said when
+// nothing else makes videos. A request that names its model is its own.
+func TestVideoGenIsTheSettingOrAutomatic(t *testing.T) {
+	grokSignedIn(t)
+	up := newGrokMedia(t)
+	s := New()
+	save := func(image, video string) {
+		t.Helper()
+		st := settings.Load()
+		st.ImageGen, st.VideoGen = image, video
+		if err := settings.Save(st); err != nil {
+			t.Fatal(err)
+		}
+	}
+	asked := func(i int) string {
+		t.Helper()
+		var sent map[string]any
+		json.Unmarshal([]byte(up.body("/v1/videos/generations", i)), &sent)
+		m, _ := sent["model"].(string)
+		return m
+	}
+	for i, image := range []string{"", "off"} {
+		save(image, "grok/grok-imagine-video-1.5")
+		code, obj, raw, _ := request(t, s, "POST", "/v1/videos", "application/json", `{"prompt":"a kite"}`)
+		if code != 200 || obj["model"] != "grok/grok-imagine-video-1.5" || asked(i) != "grok-imagine-video-1.5" {
+			t.Fatalf("ImageGen %q: %d %s, vendor asked for %q", image, code, raw, asked(i))
+		}
+	}
+	save("", "off")
+	if m, ok := videomaker(); ok || m != "" {
+		t.Fatalf("off: videomaker = %q %v", m, ok)
+	}
+	n := len(up.paths)
+	code, obj, raw, _ := request(t, s, "POST", "/v1/videos", "application/json", `{"prompt":"a kite"}`)
+	if code != 400 || !strings.Contains(errorOf(obj), "Video generation is off") || len(up.paths) != n {
+		t.Fatalf("off: %d %s, vendor asked %v", code, raw, up.paths[n:])
+	}
+	if code, _, raw, _ = request(t, s, "POST", "/v1/videos", "application/json", `{"prompt":"a kite","model":"grok/grok-imagine-video-1.5"}`); code != 200 {
+		t.Fatalf("off, a named model: %d %s", code, raw)
+	}
+	save("", "gone/grok-imagine-video")
+	if m, ok := videomaker(); !ok || m != "grok/grok-imagine-video" || VideomakerMissing() != "gone/grok-imagine-video" {
+		t.Fatalf("missing: videomaker = %q %v, missing %q", m, ok, VideomakerMissing())
+	}
+	save("", "grok/grok-imagine-video-1.5")
+	if VideomakerMissing() != "" {
+		t.Fatalf("a pick that resolves is said missing: %q", VideomakerMissing())
+	}
+}
+
+// A picked video model that is gone, with nothing else making videos, is
+// named in the refusal, with where to pick another.
+func TestVideoGenMissingIsSaid(t *testing.T) {
+	codexSignedIn(t) // a ChatGPT account makes no videos, and there is no Grok one
+	s := New()
+	st := settings.Load()
+	st.VideoGen = "gone/grok-imagine-video"
+	if err := settings.Save(st); err != nil {
+		t.Fatal(err)
+	}
+	code, obj, raw, _ := request(t, s, "POST", "/v1/videos", "application/json", `{"prompt":"a kite"}`)
+	if code != 400 || !strings.Contains(errorOf(obj), `"gone/grok-imagine-video", isn't set up any more`) || !strings.Contains(errorOf(obj), "Settings → Images → Video generation") {
+		t.Fatalf("%d %s", code, raw)
+	}
+}
+
 // The vendor names its models without a provider; so may a request.
 func TestVideoModelByItsBareName(t *testing.T) {
 	grokSignedIn(t)

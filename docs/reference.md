@@ -458,6 +458,13 @@ or the turn cannot be identified, it uses Settings → Images → Image generati
 turn's provider. An explicit `provider/model` keeps its destination; an upstream
 image error does not retry through the setting. Magpie Image MCP is not required.
 
+A `/v1/videos` request that names no model, such as Magpie Image's
+`generate_video`, uses Settings → Images → Video generation. Automatic takes
+the first video model of the first provider that makes any, and stays off
+while Image generation is Off, as before. Pick a model there to make videos
+with it even when Image generation is Off, or pick Off to turn such requests
+away. A request that names its model is not affected.
+
 WorkBuddy (China)'s daily check-in (签到) is pressed from the app's Usage card
 (*Check in now*), `magpie accounts checkin`, or `c` on the TUI's Usage page,
 which checks in every account signed in on this computer at once; its

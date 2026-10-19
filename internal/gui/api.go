@@ -422,6 +422,12 @@ type settingsJSON struct {
 	// magpie listed it, is its one GPT Image (gateway.ListedDrawer, #1865)
 	ImageGenShown  string     `json:"imageGenShown,omitempty"`
 	ImageGenModels []modelRef `json:"imageGenModels"`
+	// the model a video request that names none is made with when VideoGen
+	// names none, the VideoGen the user picked when magpie can't find it any
+	// more, and the models that can be named (#2896)
+	VideoGenAuto    string     `json:"videoGenAuto,omitempty"`
+	VideoGenMissing string     `json:"videoGenMissing,omitempty"`
+	VideoGenModels  []modelRef `json:"videoGenModels"`
 	// the web search APIs a model's search goes to when no provider can
 	// search (#419), their keys masked; the ones that can be added; and
 	// the provider that searches first, if one does
@@ -677,6 +683,15 @@ func settingsState() settingsJSON {
 	}
 	if v := gateway.ListedDrawer(s.ImageGen); v != s.ImageGen {
 		s.ImageGenShown = v
+	}
+	s.VideoGenAuto, s.VideoGenModels, s.VideoGenMissing = gateway.AutoVideomaker(), []modelRef{}, gateway.VideomakerMissing()
+	for _, p := range provider.All() {
+		if !p.On() || p.DecideOnly() {
+			continue
+		}
+		for _, m := range gateway.Videomakers(p) {
+			s.VideoGenModels = append(s.VideoGenModels, modelRef{ID: p.ID + "/" + m.ID, Name: cmp.Or(m.Name, m.ID), Provider: p.ID, PName: p.Name, Icon: p.Icon})
+		}
 	}
 	// the Codex subagents row's warning: magpie's multi-agent V1 doesn't reach
 	// Codex where its own multi_agent_v2 is on in the config magpie routes, and
@@ -1262,6 +1277,12 @@ func Handler(w Windows, gw *gateway.Server) http.Handler {
 		if v := strings.TrimSpace(in.ImageGen); v != "" && v != "off" && v != cur.ImageGen {
 			if _, _, ok := provider.Resolve(v); !ok {
 				fail(rw, fmt.Errorf("no model %s to generate images", v))
+				return
+			}
+		}
+		if v := strings.TrimSpace(in.VideoGen); v != "" && v != "off" && v != cur.VideoGen {
+			if _, _, ok := provider.Resolve(v); !ok {
+				fail(rw, fmt.Errorf("no model %s to make videos", v))
 				return
 			}
 		}

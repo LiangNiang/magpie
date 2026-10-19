@@ -154,14 +154,46 @@ func markedKey(p provider.Provider, by string) (provider.Provider, bool) {
 }
 
 // videomaker is the model a request that names none makes its video with:
-// AutoVideomaker's, unless the Settings turned image generation off, which
-// turns video off with it. None when it is off or no provider makes videos.
+// the Settings' VideoGen while it resolves, else AutoVideomaker's. VideoGen
+// "off" turns video off; left empty, video follows image generation's
+// "off", as it did before it had a setting of its own (#2896). None when it
+// is off or no provider makes videos.
 func videomaker() (string, bool) {
-	if settings.Load().ImageGen == "off" {
+	st := settings.Load()
+	switch v := st.VideoGen; v {
+	case "off":
 		return "", false
+	case "":
+		if st.ImageGen == "off" {
+			return "", false
+		}
+	default:
+		if pickedMissing(v) == "" {
+			return v, true
+		}
 	}
 	m := AutoVideomaker()
 	return m, m != ""
+}
+
+// VideomakerMissing is the model Settings › Images › Video generation names
+// when magpie can't find it any more, so that AutoVideomaker's makes the
+// video in its place. "" when none is named, it is off, or it resolves.
+func VideomakerMissing() string { return pickedMissing(settings.Load().VideoGen) }
+
+// noVideomaker is why a request that names no model has none to make its
+// video with, and what to change.
+func noVideomaker() string {
+	st := settings.Load()
+	switch {
+	case VideomakerMissing() != "":
+		return fmt.Sprintf("no model to make videos with: the Video generation model picked in magpie's Settings, %q, isn't set up any more: pick another in Settings → Images → Video generation, or name one", st.VideoGen)
+	case st.VideoGen == "off":
+		return "no model to make videos with: Settings → Images → Video generation is off: pick a model there, or name one"
+	case st.VideoGen == "" && st.ImageGen == "off":
+		return "no model to make videos with: Settings → Images → Image generation is off, which turns videos off while Video generation is automatic: pick a model in Video generation, turn Image generation on, or name one"
+	}
+	return "no model to make videos with: sign in to a Grok subscription or set up a provider that makes videos, or name one"
 }
 
 // AutoVideomaker is the model a request that names none makes its video
@@ -673,7 +705,7 @@ func (s *Server) videosCreate(w http.ResponseWriter, r *http.Request) {
 	if f.Model == "" {
 		m, ok := videomaker()
 		if !ok {
-			fail(400, "no model to make videos with: sign in to a Grok subscription or set up a provider that makes videos, and leave Settings → Images → Image generation on, or name one")
+			fail(400, noVideomaker())
 			return
 		}
 		f.Model, call.Model = m, m

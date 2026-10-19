@@ -301,8 +301,13 @@ type Settings struct {
 	// gateway's /v1/images/generations when a request names no model): a
 	// model's id, "off", or empty for one magpie picks (gateway.drawer).
 	// "off" turns the video a request that names no model gets off too
-	// (gateway.videomaker).
+	// while VideoGen is left empty (gateway.videomaker).
 	ImageGen string `json:"imageGen,omitempty"`
+	// VideoGen is the model the gateway's /v1/videos makes a video with when
+	// a request names no model (#2896): a model's id, "off", or empty for
+	// the one magpie picks, which follows ImageGen's "off" as before
+	// (gateway.videomaker).
+	VideoGen string `json:"videoGen,omitempty"`
 	// Searcher is the provider that searches the web for a model that
 	// can't: "<provider>" with the small model magpie picks of it,
 	// "<provider>/<model>", or empty for the one magpie picks
@@ -1301,6 +1306,10 @@ func save(s Settings, recording bool) error {
 	s.ImageGen = strings.TrimSpace(s.ImageGen)
 	if s.ImageGen != "" && s.ImageGen != "off" && !strings.Contains(s.ImageGen, "/") {
 		return fmt.Errorf("the image generation model must be a model's id such as openai/gpt-image-1, or off, not %q", s.ImageGen)
+	}
+	s.VideoGen = strings.TrimSpace(s.VideoGen)
+	if s.VideoGen != "" && s.VideoGen != "off" && !strings.Contains(s.VideoGen, "/") {
+		return fmt.Errorf("the video generation model must be a model's id such as grok/grok-imagine-video, or off, not %q", s.VideoGen)
 	}
 	rules, err := redact.CheckRules(s.RedactRules)
 	if err != nil {

@@ -20682,6 +20682,7 @@ function renderImages(s, keep) {
   r.append(who, val);
   box.append(r);
   renderImageGen(s, keep, box);
+  renderVideoGen(s, keep, box);
   // the same image recognition as an MCP server of the gateway's (JonahFu
   // on X), for an agent to mount as its analyze_image tool
   const mcpURL = mcpAddress(s, "/mcp/magpie/vision");
@@ -20720,7 +20721,8 @@ function renderImageGen(s, keep, box) {
   // where the reader is, and takes them (#2091, nailuoGG)
   const libOff = featuresOff.has("library");
   const sub = el("div", "sub wraps",
-    v === "off" ? t("Agents given Magpie Image can't generate images or videos: the tool says it is off")
+    v === "off" ? (s.videoGen ? t("Agents given Magpie Image can't generate images: the tool says it is off")
+      : t("Agents given Magpie Image can't generate images or videos: the tool says it is off"))
     : gatewayMode ? t("The model Magpie Image draws with, for the agents given the Magpie Image tool; images are saved in their project")
     : libOff ? t("The model Magpie Image draws with. Agents get the Magpie Image tool from the Library, which is turned off in Plugins › Built-in; images are saved in their project")
     : t("The model Magpie Image draws with. Agents get the Magpie Image tool from the Library; images are saved in their project"));
@@ -20772,6 +20774,53 @@ function renderImageGen(s, keep, box) {
     { value: "off", label: t("Off"), note: t("no images generated"), reset: true },
     ...models.map(opt)],
   onPick: (id) => { if (id !== shown) savePrefs({ ...keep, imageGen: id }); } }, b, ev);
+  const val = el("div", "val");
+  val.append(b);
+  r.append(who, val);
+  box.append(r);
+}
+
+// renderVideoGen: the model a video request that names none is made with
+// (#2896) — the one magpie picks, one named, or none. Left automatic it
+// follows Image generation's Off, as videos did before they had a row.
+function renderVideoGen(s, keep, box) {
+  const models = s.videoGenModels || [];
+  const named = (id) => {
+    const m = models.find((x) => x.id === id);
+    return m ? `${m.name || m.id} · ${m.providerName}` : id;
+  };
+  const icOf = (id) => models.find((x) => x.id === id)?.icon;
+  const v = s.videoGen || "";
+  // automatic, with Image generation off: no video, as before
+  const follows = !v && s.imageGen === "off";
+  const gone = v && v === s.videoGenMissing;
+  const r = el("div", "row pref");
+  r.id = "videoGenRow";
+  const who = el("div", "who");
+  who.append(el("div", "name", t("Video generation")), el("div", "sub wraps",
+    v === "off" ? t("A video request that names no model is turned away")
+    : follows ? t("Automatic follows Image generation, which is off, so a video request that names no model is turned away. Pick a model here to make videos anyway")
+    : t("The model a video is made with when the agent or app names none, such as Magpie Image's generate_video")));
+  if (gone) who.append(el("div", "sub err video-gen-missing", s.videoGenAuto
+    ? t("{model}, picked here, isn't set up any more: its provider was removed or turned off, or no longer has it. {auto}, the automatic choice, makes videos in its place. Pick another model here.", { model: v, auto: named(s.videoGenAuto) })
+    : t("{model}, picked here, isn't set up any more: its provider was removed or turned off, or no longer has it. No other model makes videos, so a request that names no model is turned away. Pick another model here.", { model: v })));
+  const b = el("button", "rt-cond on");
+  b.type = "button";
+  b.setAttribute("aria-label", t("Video generation"));
+  if (v === "off") b.append(el("span", "", t("Off")));
+  else if (gone) b.append(icon("generic"), el("span", "", v + " · " + t("missing")));
+  else if (v) b.append(icon(icOf(v) || "generic"), el("span", "", named(v)));
+  else if (follows) b.append(el("span", "", t("Automatic") + " · " + t("Off")));
+  else {
+    if (s.videoGenAuto) b.append(icon(icOf(s.videoGenAuto) || "generic"));
+    b.append(el("span", "", s.videoGenAuto ? t("Automatic") + " · " + named(s.videoGenAuto) : t("Automatic") + " · " + t("no model that makes videos")));
+  }
+  const opt = (x) => ({ value: x.id, label: x.name || x.id, note: x.providerName, icon: x.icon, group: x.provider ? x.providerName : ROUTING_GROUPS, ref: x.id });
+  b.onclick = (ev) => openPicker({ id: "", name: "", fields: [] }, { key: "videoGen", label: "model", value: v, options: [
+    { value: "", label: t("Automatic"), note: follows ? t("off with Image generation") : s.videoGenAuto ? named(s.videoGenAuto) : t("no model that makes videos"), reset: true },
+    { value: "off", label: t("Off"), note: t("no videos made"), reset: true },
+    ...models.map(opt)],
+  onPick: (id) => { if (id !== v) savePrefs({ ...keep, videoGen: id }); } }, b, ev);
   const val = el("div", "val");
   val.append(b);
   r.append(who, val);
@@ -22158,7 +22207,7 @@ function prefsKeep(s) {
     codexWarmAts: warmTimes(s.codexWarmAts, s.codexWarmAt), claudeWarmAts: warmTimes(s.claudeWarmAts, s.claudeWarmAt), workbuddyCheckin: !!s.workbuddyCheckin, traeCheckin: !!s.traeCheckin, minimaxCheckin: !!s.minimaxCheckin, qoderCheckin: !!s.qoderCheckin, noStats: !!s.noStats, noUsageStats: !!s.noUsageStats,
     memberModel: !!s.memberModel, noLoopGuard: !!s.noLoopGuard, claudeLeanPrompt: !!s.claudeLeanPrompt, refusalRetries: s.refusalRetries ?? null,
     noUpdatePill: !!s.noUpdatePill, noAutoUpdate: !!s.noAutoUpdate, updateEvery: s.updateEvery || 360, autoRestart: !!s.autoRestart, noAutoDownload: !!s.noAutoDownload,
-    trayUsage: s.trayUsage || "", trayUsageEvery: s.trayUsageEvery || 3, trayNoLogos: !!s.trayNoLogos, trayNoBird: !!s.trayNoBird, trayPace: !!s.trayPace, trayNoCost: !!s.trayNoCost, vision: s.vision || "", visionEffort: s.visionEffort || "", searcherEffort: s.searcherEffort || "", imageGen: s.imageGen || "", searcher: s.searcher || "", searchFirst: s.searchFirst || "", currency: s.currency || "usd",
+    trayUsage: s.trayUsage || "", trayUsageEvery: s.trayUsageEvery || 3, trayNoLogos: !!s.trayNoLogos, trayNoBird: !!s.trayNoBird, trayPace: !!s.trayPace, trayNoCost: !!s.trayNoCost, vision: s.vision || "", visionEffort: s.visionEffort || "", searcherEffort: s.searcherEffort || "", imageGen: s.imageGen || "", videoGen: s.videoGen || "", searcher: s.searcher || "", searchFirst: s.searchFirst || "", currency: s.currency || "usd",
     chineseUnits: !!s.chineseUnits, usageAlert: s.usageAlert || 0, balanceAlert: s.balanceAlert || 0, resetReminder: s.resetReminder || 0,
     turnDoneAlert: s.turnDoneAlert || 0 };
 }
